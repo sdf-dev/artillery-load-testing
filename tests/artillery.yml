@@ -1,0 +1,131 @@
+config:
+  target: "INSERT TARGET URL"
+  timeout: 60
+  phases:
+    - duration: 500
+      arrivalCount: 5000
+    # 20 minute script 54k requests
+    # - duration: 300
+    #   arrivalRate: 1
+    #   rampTo: 20
+    #   name: "Warm up the application"
+    # - duration: 600
+    #   arrivalRate: 20
+    #   name: "Peak load"
+    # - duration: 300
+    #   arrivalRate: 20
+    #   rampTo: 1
+    #   name: "Slow down"
+  processor: "./scripts/functions.js"
+  payload:
+    path: 'users.csv'
+    fields:
+      - 'username'
+      - 'password'
+    # loadAll: true
+  plugins:
+    expect: {}
+  variables:
+    sentinelRedirectUrl: ""
+    sentinelAntiForgeCookie: ""
+    sentinelAntiForgeryValue: ""
+    acaValue: ""
+    requestVerificationToken: ""
+    sentinelNonce: ""
+    sentinelState: ""
+    sentinelCorrelation: ""
+    sentinelLoginUrl: ""
+    sentinelPostUrl: ""
+    callBackUrl: ""
+    postReturnUrlParams: ""
+    
+scenarios:
+  - flow:
+      - get:
+          #url: "Insert URL"
+          captureAll: true
+          afterResponse: getAcaCookie
+          followRedirect: false
+          expect:
+            - statusCode: 200
+
+      - get:
+          #url: "insert URL"
+          captureAll: true
+          afterResponse: getSentinelCookies
+          followRedirect: false
+          expect:
+            - statusCode: 302
+
+      - get:
+          #url: "INSERT URL"
+          captureAll: true
+          afterResponse: getSentinelReturn
+          followRedirect: false
+          expect:
+            - statusCode: 302
+
+      - get:
+          #url: "INSERT URL"
+          captureAll: true
+          afterResponse: antiForgeryFunction
+          followRedirect: false
+          expect:
+            - statusCode: 200
+
+      - post:
+          #url: "INSERT URL"
+          headers:
+            RequestVerificationToken : "{{ requestVerificationToken }}"
+            cookie:
+              ".AspNetCore.Antiforgery" : "{{ sentinelAntiForgeryValue }}"
+          form:
+            ReturnUrl: "{{ postReturnUrlParams }}"
+            ClientId: "CHK"
+            button: "login"
+            username: "{{ username }}"
+            password: "{{ password }}"
+            RequestVerificationToken : "{{ requestVerificationToken }}"
+          afterResponse: sentinelPostFunction
+          followRedirect: false
+          captureAll: true
+          expect:
+            - statusCode: 302
+
+      - get:
+          #url: "INSERT URL"
+          cookie:
+            ".AspNetCore.Antiforgery" : "{{ sentinelAntiForgeryValue }}"
+          afterResponse: getSuccessfulCallBackFunction
+          followRedirect: false
+          captureAll: true
+          expect:
+            - statusCode: 200
+      
+      - post:
+          #url: "insert URL"
+          cookies:
+            "acaAffinity": "{{ acaValue }}"
+            ".AspNetCore.Correlation" : {{ sentinelCorrelation }}
+            ".AspNetCore.OpenIdConnect" : {{ sentinelNonce }}
+          followRedirect: false
+          captureAll: true
+          afterResponse: checkflowSignIn
+          expect:
+            - statusCode: 302
+
+      - get:
+          #url: "insert URL"
+          cookie: 
+            "acaAffinity": "{{ acaValue }}"
+          followRedirect: false
+          captureAll: true
+          afterResponse: endOfTestFunction
+          expect:
+            - statusCode: 200
+
+
+
+          
+
+          
